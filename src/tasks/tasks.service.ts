@@ -47,7 +47,7 @@ export class TasksService {
             tasks.filter(task => task.status === status);
         }
         if(search){
-            tasks.filter(task => task.status === search || task.description === search);
+            tasks.filter(task => task.status.includes(search) || task.description.includes(search));
         }
         return tasks;
     }
