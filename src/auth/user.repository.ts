@@ -1,8 +1,10 @@
 import { EntityRepository, Repository } from "typeorm";
 import { User } from "./user.entity";
 import { CreateUserDto } from "./dtos/create-user.dto";
-import { BadRequestException, ConflictException, InternalServerErrorException } from "@nestjs/common";
+import { BadRequestException, ConflictException, InternalServerErrorException, UnauthorizedException } from "@nestjs/common";
 import * as bcrypt from 'bcrypt';
+import { LoginUserDto } from "./dtos/login-user.dto";
+import { JwtPayloadInterface } from "./jwt-playload.interface";
 
 @EntityRepository(User)
 export class UserRepository extends Repository<User>{
@@ -11,7 +13,6 @@ export class UserRepository extends Repository<User>{
         const { username, password, password_confirmation } = createUserDto
         
         // throw exception if not matching
-        console.log(password_confirmation);
         if(password !== password_confirmation){
             throw new BadRequestException("password and password confirmation doesn't match");
         }
@@ -25,7 +26,6 @@ export class UserRepository extends Repository<User>{
         try {
             await user.save();
         }catch(error){
-            console.log(error);
             // duplicate username
             if(error.code === "23505"){
                 throw new ConflictException(error.detail);
@@ -33,6 +33,19 @@ export class UserRepository extends Repository<User>{
                 throw new InternalServerErrorException();
             }
         }
+    }
+
+
+    async validateUserPassword(loginDto: LoginUserDto): Promise<string>{
+        const { username, password } = loginDto;
+        const user = await this.findOne({ username });
+
+        if(user && await user.validPassword(password)){
+            return user.username
+        }else{
+            throw new UnauthorizedException(`Invalid Credentials`);
+        }
+
     }
 
     private async hashedPassword(password: string, password_salt: string): Promise<string> {

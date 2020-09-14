@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { TaskRepository } from './task.repository';
 import { Task } from './task.entity';
 import { getConnection } from 'typeorm';
+import { User } from 'src/auth/user.entity';
 
 
 @Injectable()
@@ -17,32 +18,32 @@ export class TasksService {
         private taskRepository: TaskRepository,
     ){}
 
-    async getAllByFilter(filterDto: GetTasksFilterDto): Promise<Task[]> {
-        return this.taskRepository.searchFilter(filterDto);
+    async getAllByFilter(filterDto: GetTasksFilterDto, user: User): Promise<Task[]> {
+        return this.taskRepository.searchFilter(filterDto, user);
     }
 
-    async findById(id: number): Promise<Task> {
-        const task = await this.taskRepository.findOne(id);
+    async findById(id: number, user: User): Promise<Task> {
+        const task = await this.taskRepository.findOne({where: {id: id, userId: user.id}});
         if(!task){
             throw new NotFoundException(`Task with an ID ${id} not found`);
         }
         return task;
     }
 
-    async createTask(createTaskDto: CreateTaskDto): Promise<Task> {
-        return this.taskRepository.createTask(createTaskDto);
+    async createTask(createTaskDto: CreateTaskDto, user: User): Promise<Task> {
+        return this.taskRepository.createTask(createTaskDto, user);
     }
 
-    async deleteById(id: number): Promise<void> {
-        const result = await this.taskRepository.delete(id);
+    async deleteById(id: number, user: User): Promise<void> {
+        const result = await this.taskRepository.delete({id, userId: user.id});
         console.log(result);
         if(result.affected === 0){
             throw new NotFoundException(`Task with an ID ${id} not found`);
         }
     }
 
-    async update(id: number, status: TaskStatus): Promise<Task> {
-       var task = await this.findById(id);
+    async update(id: number, status: TaskStatus, user: User): Promise<Task> {
+       var task = await this.findById(id, user);
        task.status = status
        await task.save();
        return task;

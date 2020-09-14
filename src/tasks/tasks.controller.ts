@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, Patch, Query, UsePipes, ValidationPipe, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Patch, Query, UsePipes, ValidationPipe, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dtos/create-task.dto';
 import { GetTasksFilterDto } from './dtos/get-tasks-filter.dto';
@@ -6,8 +6,13 @@ import { TaskStatusValidationPipe } from './pipes/task-status-validation.pipe';
 import { Task } from './task.entity';
 import { TaskStatus } from './task-status.enum';
 import { stat } from 'fs';
+import { AuthGuard } from '@nestjs/passport';
+import { GetUser } from 'src/auth/get-user.decorator';
+import { User } from 'src/auth/user.entity';
+import { userInfo } from 'os';
 
 @Controller('tasks')
+@UseGuards(AuthGuard())
 export class TasksController {
     constructor(private tasksService: TasksService){}
 
@@ -16,8 +21,8 @@ export class TasksController {
     //     return this.tasksService.getAll();
     // }
     @Get()
-    search(@Query(ValidationPipe) getTasksFilterDto: GetTasksFilterDto): Promise<Task[]> {
-        return this.tasksService.getAllByFilter(getTasksFilterDto);
+    search(@Query(ValidationPipe) getTasksFilterDto: GetTasksFilterDto, @GetUser() user: User): Promise<Task[]> {
+        return this.tasksService.getAllByFilter(getTasksFilterDto, user);
     }
 
     // // @Query pass it as uri xx.com?status=xx?&search=xx
@@ -37,8 +42,8 @@ export class TasksController {
     // @Body will read from HTTP req body 
     @Post()
     @UsePipes(ValidationPipe)
-    create(@Body() createTaskDto: CreateTaskDto): Promise<Task> {
-        return this.tasksService.createTask(createTaskDto);
+    create(@Body() createTaskDto: CreateTaskDto, @GetUser() user: User): Promise<Task> {
+        return this.tasksService.createTask(createTaskDto, user);
     }
 
     // @Get(':id')
@@ -48,8 +53,8 @@ export class TasksController {
     // }
 
     @Get(':id')
-    findById(@Param('id', ParseIntPipe) id: number): Promise<Task> {
-        return this.tasksService.findById(id);
+    findById(@Param('id', ParseIntPipe) id: number, @GetUser() user: User): Promise<Task> {
+        return this.tasksService.findById(id, user);
 
     }
 
@@ -61,8 +66,11 @@ export class TasksController {
 
     // @Param => xxx.com/1/user
     @Delete(':id')
-    deleteById(@Param('id', ParseIntPipe) id: number): Promise<void> {
-        return this.tasksService.deleteById(id);
+    deleteById(
+        @Param('id', ParseIntPipe) id: number,
+        @GetUser() user: User,
+    ): Promise<void> {
+        return this.tasksService.deleteById(id, user);
     }
 
     // @Patch(':id/:status')
@@ -76,9 +84,10 @@ export class TasksController {
     @Patch(':id/:status')
     update(
         @Param('id', ParseIntPipe) id: number,
-        @Param('status', TaskStatusValidationPipe) status: TaskStatus
+        @Param('status', TaskStatusValidationPipe) status: TaskStatus,
+        @GetUser() user: User
         ): Promise<Task> {
-        return this.tasksService.update(id, status);
+        return this.tasksService.update(id, status, user);
     }
 
 }
